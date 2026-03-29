@@ -25,16 +25,19 @@ app.get("/webhook", (req, res) => {
 });
 
 // Función para enviar mensaje por WhatsApp
-async function enviarMensajeWhatsApp(numero, mensaje) {
+async function enviarPlantillaWhatsApp(numero) {
   const url = `https://graph.facebook.com/v22.0/${PHONE_NUMBER_ID}/messages`;
 
   const body = {
     messaging_product: "whatsapp",
     to: numero,
-    type: "text",
-    text: {
-      body: mensaje,
-    },
+    type: "template",
+    template: {
+      name: "reactivacion_kassava",
+      language: {
+        code: "es"
+      }
+    }
   };
 
   const response = await fetch(url, {
@@ -47,7 +50,11 @@ async function enviarMensajeWhatsApp(numero, mensaje) {
   });
 
   const data = await response.json();
-  console.log("Respuesta de Meta:", JSON.stringify(data, null, 2));
+  console.log("Respuesta plantilla Meta:", JSON.stringify(data, null, 2));
+
+  if (!response.ok) {
+    throw new Error(JSON.stringify(data));
+  }
 }
 
 // Recibir mensajes
@@ -111,7 +118,16 @@ Responde con una opción:
 3️⃣ Promociones`;
     }
 
-    await enviarMensajeWhatsApp(numeroCliente, respuesta);
+   try {
+  await enviarMensajeWhatsApp(numeroCliente, respuesta);
+} catch (error) {
+  console.log("Error enviando mensaje normal:", error.message);
+
+  if (error.message.includes("131047")) {
+    console.log("Fuera de ventana de 24 horas. Enviando plantilla...");
+    await enviarPlantillaWhatsApp(numeroCliente);
+  }
+}
 
     res.sendStatus(200);
   } catch (error) {
@@ -123,3 +139,26 @@ Responde con una opción:
 app.listen(PORT, () => {
   console.log("Servidor corriendo en puerto " + PORT);
 });
+
+async function enviarPlantilla(to) {
+  await axios.post(
+    `https://graph.facebook.com/v22.0/${process.env.PHONE_NUMBER_ID}/messages`,
+    {
+      messaging_product: "whatsapp",
+      to: to,
+      type: "template",
+      template: {
+        name: "reactivacion_kassava",
+        language: {
+          code: "es"
+        }
+      }
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
+        "Content-Type": "application/json"
+      }
+    }
+  );
+}
