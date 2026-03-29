@@ -7,7 +7,9 @@ const app = express();
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
-const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
+const VERIFY_TOKEN = process.env.VERIFICAR_TOKEN;
+const ACCESS_TOKEN = process.env.ACCESS_TOKEN;
+const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 
 // Verificación webhook
 app.get("/webhook", (req, res) => {
@@ -22,10 +24,100 @@ app.get("/webhook", (req, res) => {
   res.sendStatus(403);
 });
 
+// Función para enviar mensaje por WhatsApp
+async function enviarMensajeWhatsApp(numero, mensaje) {
+  const url = `https://graph.facebook.com/v22.0/${PHONE_NUMBER_ID}/messages`;
+
+  const body = {
+    messaging_product: "whatsapp",
+    to: numero,
+    type: "text",
+    text: {
+      body: mensaje,
+    },
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${ACCESS_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data = await response.json();
+  console.log("Respuesta de Meta:", JSON.stringify(data, null, 2));
+}
+
 // Recibir mensajes
-app.post("/webhook", (req, res) => {
-  console.log("Mensaje recibido:", JSON.stringify(req.body, null, 2));
-  res.sendStatus(200);
+app.post("/webhook", async (req, res) => {
+  try {
+    console.log("Mensaje recibido:", JSON.stringify(req.body, null, 2));
+
+    const mensaje =
+      req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.text?.body?.toLowerCase()?.trim();
+
+    const numeroCliente =
+      req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.from;
+
+    if (!mensaje || !numeroCliente) {
+      return res.sendStatus(200);
+    }
+
+    let respuesta = "";
+
+    if (mensaje === "hola" || mensaje === "buenas" || mensaje === "buenos días") {
+      respuesta = `Hola 👋 Bienvenido a Kassava Shop
+
+Tenemos zapatillas modernas, cómodas y de excelente calidad.
+
+¿Qué estás buscando hoy?
+
+1️⃣ Hombre
+2️⃣ Mujer
+3️⃣ Promociones`;
+    } else if (mensaje === "1") {
+      respuesta = `🔥 Zapatillas para hombre
+
+Tenemos estilos:
+- Deportivas
+- Urbanas
+- Casual
+
+Escríbeme cuál te interesa y te envío opciones.`;
+    } else if (mensaje === "2") {
+      respuesta = `🔥 Zapatillas para mujer
+
+Tenemos estilos:
+- Deportivas
+- Urbanas
+- Moda
+
+Escríbeme cuál te interesa y te envío opciones.`;
+    } else if (mensaje === "3") {
+      respuesta = `🔥 Promociones activas
+
+Tenemos ofertas en referencias seleccionadas.
+
+Escríbeme tu ciudad y te digo disponibilidad y envío.`;
+    } else {
+      respuesta = `Gracias por escribir a Kassava Shop 👟
+
+Responde con una opción:
+
+1️⃣ Hombre
+2️⃣ Mujer
+3️⃣ Promociones`;
+    }
+
+    await enviarMensajeWhatsApp(numeroCliente, respuesta);
+
+    res.sendStatus(200);
+  } catch (error) {
+    console.error("Error en webhook:", error);
+    res.sendStatus(500);
+  }
 });
 
 app.listen(PORT, () => {
