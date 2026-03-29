@@ -1,6 +1,8 @@
-require("dotenv").config();
-const express = require("express");
-const axios = require("axios");
+import dotenv from "dotenv";
+import express from "express";
+import axios from "axios";
+
+dotenv.config();
 
 const app = express();
 app.use(express.json());
@@ -38,15 +40,15 @@ async function enviarMensajeWhatsApp(numero, mensaje) {
     to: numero,
     type: "text",
     text: {
-      body: mensaje,
-    },
+      body: mensaje
+    }
   };
 
   const response = await axios.post(url, body, {
     headers: {
       Authorization: `Bearer ${ACCESS_TOKEN}`,
-      "Content-Type": "application/json",
-    },
+      "Content-Type": "application/json"
+    }
   });
 
   return response.data;
@@ -63,18 +65,18 @@ async function enviarPlantillaWhatsApp(numero) {
     to: numero,
     type: "template",
     template: {
-      name: "reactivacion_kassava", // cámbialo si tu plantilla tiene otro nombre exacto
+      name: "reactivacion_kassava",
       language: {
-        code: "es",
-      },
-    },
+        code: "es"
+      }
+    }
   };
 
   const response = await axios.post(url, body, {
     headers: {
       Authorization: `Bearer ${ACCESS_TOKEN}`,
-      "Content-Type": "application/json",
-    },
+      "Content-Type": "application/json"
+    }
   });
 
   return response.data;
@@ -125,8 +127,6 @@ Si quieres, te muestro opciones disponibles.`;
 
   if (mensaje === "3") {
     return `🎉 Promociones activas
-
-Tenemos referencias seleccionadas con precio especial.
 
 Si quieres ver promociones, escribe:
 promo`;
@@ -206,4 +206,3 @@ app.post("/webhook", async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
 });
-
