@@ -1,7 +1,7 @@
-const express = require('express');
-const axios = require('axios');
-const app = express();
+import express from 'express';
+import axios from 'axios';
 
+const app = express();
 app.use(express.json());
 
 // 1. Verificación del Webhook
@@ -11,31 +11,28 @@ app.get('/webhook', (req, res) => {
     const hub_token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
 
-    if (mode && hub_token) {
-        if (mode === 'subscribe' && hub_token === token) {
-            console.log('✅ WEBHOOK_VERIFICADO');
-            res.status(200).send(challenge);
-        } else {
-            res.sendStatus(403);
-        }
+    if (mode === 'subscribe' && hub_token === token) {
+        res.status(200).send(challenge);
+    } else {
+        res.sendStatus(403);
     }
 });
 
 // 2. Recepción de mensajes
 app.post('/webhook', async (req, res) => {
     try {
-        const entry = req.body.entry?.[0];
-        const changes = entry?.changes?.[0];
-        const value = changes?.value;
+        const value = req.body.entry?.[0]?.changes?.[0]?.value;
         const message = value?.messages?.[0];
 
         if (message) {
             const from = message.from; 
             const text = message.text?.body || message.interactive?.button_reply?.id;
+            console.log("📩 Mensaje recibido de:", from, "Contenido:", text);
             await manejarFlujo(from, text);
         }
         res.status(200).send('EVENT_RECEIVED');
     } catch (err) {
+        console.error("❌ Error procesando mensaje:", err.message);
         res.status(200).send('EVENT_RECEIVED');
     }
 });
@@ -53,11 +50,10 @@ async function manejarFlujo(number, input) {
     else if (input === 'btn_cambios') {
         data = {
             "messaging_product": "whatsapp", "to": number, "type": "text",
-            "text": { "body": "🔄 *Política de Cambios:*\n\n• WhatsApp: 3156031900\n• Email: kassavashop@gmail.com\n• Horario: L-V (8am - 5:30pm)\n• Máximo 1 cambio por pedido.\n• Producto nuevo y empaque original. 👟" }
+            "text": { "body": "🔄 *Política de Cambios:*\n\n• WhatsApp: 3156031900\n• Horario: L-V (8am - 5:30pm)\n• Máximo 1 cambio por pedido.\n• Producto nuevo y empaque original. 👟" }
         };
     }
     else {
-        // Menú Principal
         data = {
             "messaging_product": "whatsapp", "to": number, "type": "interactive",
             "interactive": {
@@ -83,10 +79,11 @@ async function enviarAMeta(data) {
             data,
             { headers: { 'Authorization': `Bearer ${process.env.ACCESS_TOKEN}` } }
         );
+        console.log("✅ Respuesta enviada con éxito");
     } catch (error) {
-        console.log("Error detallado:", error.response?.data);
+        console.error("❌ Error enviando a Meta:", error.response?.data || error.message);
     }
 }
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Kassava Bot activo en puerto ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Servidor de KassavaShop listo en puerto ${PORT}`));
