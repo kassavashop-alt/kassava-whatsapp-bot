@@ -2,7 +2,7 @@
   "name": "kassava-whatsapp-bot",
   "version": "1.0.0",
   "description": "Bot de WhatsApp para Kassava Shop",
-  "type": "module",
+  "type": "commonjs",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
