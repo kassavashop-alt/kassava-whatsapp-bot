@@ -21,36 +21,39 @@ app.get('/webhook', (req, res) => {
 // 2. Recepción de mensajes
 app.post('/webhook', async (req, res) => {
     try {
-        const value = req.body.entry?.[0]?.changes?.[0]?.value;
+        const entry = req.body.entry?.[0];
+        const changes = entry?.changes?.[0];
+        const value = changes?.value;
         const message = value?.messages?.[0];
 
         if (message) {
             const from = message.from; 
             const text = message.text?.body || message.interactive?.button_reply?.id;
-            console.log("📩 Mensaje recibido de:", from, "Contenido:", text);
+            
+            console.log(`📩 Mensaje de ${from}: ${text}`);
             await manejarFlujo(from, text);
         }
         res.status(200).send('EVENT_RECEIVED');
     } catch (err) {
-        console.error("❌ Error procesando mensaje:", err.message);
+        console.error("❌ Error:", err.message);
         res.status(200).send('EVENT_RECEIVED');
     }
 });
 
-// 3. Lógica de respuestas de KassavaShop
+// 3. Lógica de KassavaShop
 async function manejarFlujo(number, input) {
     let data;
 
     if (input === 'btn_tiempos') {
         data = {
             "messaging_product": "whatsapp", "to": number, "type": "text",
-            "text": { "body": "🚀 *Tiempos de entrega KassavaShop:*\n\n• Ciudades principales: 48 a 72 horas hábiles. 🏙️\n• Municipios/Zonas rurales: 5 a 8 días hábiles. 🌳\n\n¡Recuerda que pagas al recibir! 🚚" }
+            "text": { "body": "🚀 *Tiempos de entrega KassavaShop:*\n\n• Ciudades principales: 48 a 72 horas hábiles. 🏙️\n• Municipios o zona rural: 5 a 8 días hábiles. 🌳\n\n¡Pagas al recibir! 🚚" }
         };
     } 
     else if (input === 'btn_cambios') {
         data = {
             "messaging_product": "whatsapp", "to": number, "type": "text",
-            "text": { "body": "🔄 *Política de Cambios:*\n\n• WhatsApp: 3156031900\n• Horario: L-V (8am - 5:30pm)\n• Máximo 1 cambio por pedido.\n• Producto nuevo y empaque original. 👟" }
+            "text": { "body": "🔄 *Cambios y Devoluciones:*\n\n• WhatsApp: 3156031900\n• Máximo 1 cambio por pedido.\n• Producto nuevo y empaque original.\n• Gestión: 10 días hábiles. 👟" }
         };
     }
     else {
@@ -81,9 +84,9 @@ async function enviarAMeta(data) {
         );
         console.log("✅ Respuesta enviada con éxito");
     } catch (error) {
-        console.error("❌ Error enviando a Meta:", error.response?.data || error.message);
+        console.error("❌ Error de Meta:", error.response?.data || error.message);
     }
 }
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Servidor de KassavaShop listo en puerto ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 KassavaShop activo en puerto ${PORT}`));
