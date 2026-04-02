@@ -1,24 +1,27 @@
-import express from 'express';
-import axios from 'axios';
-
+const express = require('express');
+const axios = require('axios');
 const app = express();
 app.use(express.json());
 
-// 1. Verificación del Webhook
+// 1. CONFIGURACIÓN DE VARIABLES (Extraídas de Render)
+const accessToken = process.env.ACCESS_TOKEN;
+const phoneNumberId = process.env.PHONE_NUMBER_ID;
+const verifyToken = "KASSAVA_TOKEN"; 
+
+// 2. VERIFICACIÓN DEL WEBHOOK (Lo que Meta usa para conectar)
 app.get('/webhook', (req, res) => {
-    const token = process.env.VERIFY_TOKEN;
     const mode = req.query['hub.mode'];
-    const hub_token = req.query['hub.verify_token'];
+    const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
 
-    if (mode === 'subscribe' && hub_token === token) {
+    if (mode === 'subscribe' && token === verifyToken) {
         res.status(200).send(challenge);
     } else {
         res.sendStatus(403);
     }
 });
 
-// 2. Recepción de mensajes
+// 3. RECEPCIÓN Y RESPUESTA DE MENSAJES
 app.post('/webhook', async (req, res) => {
     try {
         const entry = req.body.entry?.[0];
@@ -27,66 +30,75 @@ app.post('/webhook', async (req, res) => {
         const message = value?.messages?.[0];
 
         if (message) {
-            const from = message.from; 
-            const text = message.text?.body || message.interactive?.button_reply?.id;
+            const number = message.from;
             
-            console.log(`📩 Mensaje de ${from}: ${text}`);
-            await manejarFlujo(from, text);
+            // SI EL USUARIO ESCRIBE ALGO (Ej: "hola")
+            if (message.type === 'text') {
+                const text = message.text.body.toLowerCase();
+                if (text.includes("hola") || text.includes("buenos") || text.includes("info")) {
+                    await enviarMenuPrincipal(number);
+                }
+            }
+
+            // SI EL USUARIO PRESIONA UN BOTÓN
+            if (message.type === 'interactive') {
+                const buttonId = message.interactive.button_reply.id;
+                
+                if (buttonId === "btn_catalogo") {
+                    await enviarTextoSimple(number, "¡Excelente elección! 👟🔥\n\nMira nuestro catálogo aquí: [PEGA_AQUÍ_TU_LINK]\n\nCuando veas algo que te guste, envíanos la foto o el nombre.");
+                } 
+                else if (buttonId === "btn_envios") {
+                    await enviarTextoSimple(number, "🚚 *Información de Envíos*\n\n• Despachamos a todo el país.\n• Tiempo: 2 a 5 días hábiles.\n• ¡Pagas al recibir en tu casa! 🏠🤝");
+                } 
+                else if (buttonId === "btn_asesor") {
+                    await enviarTextoSimple(number, "👨‍💻 *Atención Humana*\n\nHe avisado a un asesor. En unos minutos te responderán personalmente. ¡Gracias por tu paciencia!");
+                }
+            }
         }
-        res.status(200).send('EVENT_RECEIVED');
-    } catch (err) {
-        console.error("❌ Error:", err.message);
-        res.status(200).send('EVENT_RECEIVED');
+        res.sendStatus(200);
+    } catch (error) {
+        console.error("Error en el bot:", error);
+        res.sendStatus(500);
     }
 });
 
-// 3. Lógica de KassavaShop
-async function manejarFlujo(number, input) {
-    let data;
+// --- FUNCIONES DE AYUDA PARA ENVIAR MENSAJES ---
 
-    if (input === 'btn_tiempos') {
-        data = {
-            "messaging_product": "whatsapp", "to": number, "type": "text",
-            "text": { "body": "🚀 *Tiempos de entrega KassavaShop:*\n\n• Ciudades principales: 48 a 72 horas hábiles. 🏙️\n• Municipios o zona rural: 5 a 8 días hábiles. 🌳\n\n¡Pagas al recibir! 🚚" }
-        };
-    } 
-    else if (input === 'btn_cambios') {
-        data = {
-            "messaging_product": "whatsapp", "to": number, "type": "text",
-            "text": { "body": "🔄 *Cambios y Devoluciones:*\n\n• WhatsApp: 3156031900\n• Máximo 1 cambio por pedido.\n• Producto nuevo y empaque original.\n• Gestión: 10 días hábiles. 👟" }
-        };
-    }
-    else {
-        data = {
-            "messaging_product": "whatsapp", "to": number, "type": "interactive",
-            "interactive": {
-                "type": "button",
-                "body": { "text": "¡Hola, ¿qué tal?! Bienvenido a *KassavaShop* 👟.\n\nCompra tus zapatillas favoritas y paga únicamente al recibir en casa. 🏠🤝\n\n¿En qué puedo ayudarte?" },
-                "action": {
-                    "buttons": [
-                        { "type": "reply", "reply": { "id": "btn_tiempos", "title": "⏱️ Envíos" } },
-                        { "type": "reply", "reply": { "id": "btn_cambios", "title": "🔄 Cambios" } },
-                        { "type": "reply", "reply": { "id": "btn_asesor", "title": "👨‍💻 Asesor" } }
-                    ]
-                }
+async function enviarMenuPrincipal(number) {
+    const url = `https://graph.facebook.com/v17.0/${phoneNumberId}/messages`;
+    const data = {
+        messaging_product: "whatsapp",
+        to: number,
+        type: "interactive",
+        interactive: {
+            type: "button",
+            body: { 
+                text: "¡Hola! Bienvenido a *KassavaShop* 👟.\n\nSomos especialistas en calzado con pago contra entrega. ¿Qué deseas hacer?" 
+            },
+            action: {
+                buttons: [
+                    { type: "reply", reply: { id: "btn_catalogo", title: "👟 Catálogo" } },
+                    { type: "reply", reply: { id: "btn_envios", title: "🚚 Envíos" } },
+                    { type: "reply", reply: { id: "btn_asesor", title: "👨‍💻 Asesor" } }
+                ]
             }
-        };
-    }
-    await enviarAMeta(data);
+        }
+    };
+    await axios.post(url, data, { 
+        headers: { Authorization: `Bearer ${accessToken}` } 
+    });
 }
 
-async function enviarAMeta(data) {
-    try {
-        await axios.post(
-            `https://graph.facebook.com/v19.0/${process.env.PHONE_NUMBER_ID}/messages`,
-            data,
-            { headers: { 'Authorization': `Bearer ${process.env.ACCESS_TOKEN}` } }
-        );
-        console.log("✅ Respuesta enviada con éxito");
-    } catch (error) {
-        console.error("❌ Error de Meta:", error.response?.data || error.message);
-    }
+async function enviarTextoSimple(number, text) {
+    const url = `https://graph.facebook.com/v17.0/${phoneNumberId}/messages`;
+    await axios.post(url, {
+        messaging_product: "whatsapp",
+        to: number,
+        type: "text",
+        text: { body: text }
+    }, { 
+        headers: { Authorization: `Bearer ${accessToken}` } 
+    });
 }
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 KassavaShop activo en puerto ${PORT}`));
+app.listen(process.env.PORT || 3000, () => console.log("🚀 Bot de KassavaShop en línea"));
