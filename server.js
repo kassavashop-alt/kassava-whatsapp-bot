@@ -45,7 +45,7 @@ app.post('/webhook', async (req, res) => {
                 const buttonId = message.interactive.button_reply.id;
                 
                 if (buttonId === "btn_catalogo") {
-                    await enviarTextoSimple(number, "¡Excelente elección! 👟🔥\n\nMira nuestro catálogo aquí: [PEGA_AQUÍ_TU_LINK]\n\nCuando veas algo que te guste, envíanos la foto o el nombre.");
+                    await enviarTextoSimple(number, "¡Excelente elección! 👟🔥\n\nMira nuestro catálogo aquí: https://kassavashop.com/\n\nCuando veas algo que te guste, envíanos la foto o el nombre.");
                 } 
                 else if (buttonId === "btn_envios") {
                     await enviarTextoSimple(number, "🚚 *Información de Envíos*\n\n• Despachamos a todo el país.\n• Tiempo: 2 a 5 días hábiles.\n• ¡Pagas al recibir en tu casa! 🏠🤝");
